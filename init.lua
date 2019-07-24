@@ -36,7 +36,7 @@ minetest.register_chatcommand("client_matcher", {
       minetest.chat_send_player(name, "[join count] protocol_version, ser_vers, major, minor, patch, version_string")
       for index, count in pairs(storage:to_table().fields) do
         local data = string.split(index, "@")
-        minetest.chat_send_player(name, "["..count.."] "..table.concat(data, "|||"))
+        minetest.chat_send_player(name, "["..count.."] "..table.concat(data, " ||| "))
       end
     elseif params == "reset" then
       storage:from_table(nil)
