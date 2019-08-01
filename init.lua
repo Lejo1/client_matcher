@@ -17,6 +17,8 @@ NAME123 Spieler: 27 ||| 26 ||| 0 ||| 4 ||| 13 ||| 0.4.13
 
 local storage = minetest.get_mod_storage()
 
+local forkinfo = "This is a Minetest Server!\nYou play an unofficial Game!\nOnly the official Minetest Client is allowed here\nYou can download it on Minetest.net\nor on the Google Play Store, just search for Minetest."
+
 minetest.register_on_joinplayer(function(player)
   minetest.after(5, function()
     if player:is_player_connected() then
@@ -26,7 +28,19 @@ minetest.register_on_joinplayer(function(player)
         and info.minor and info.patch and info.version_string then
           local data = info.protocol_version.."@"..info.serialization_version.."@"..
           info.major.."@"..info.minor.."@"..info.patch.."@"..info.version_string
-          storage:set_int(data, storage:get_int(data) + 1)
+          if storage:get_int(data) < 0 then
+            storage:set_int(data, storage:get_int(data) - 1)
+            local input = {
+            hud_elem_type = "text",
+            position = {x=0.2,y=0.1},
+            scale = {x=100,y=50},
+            text = forkinfo,
+            number = 0xFF0000,
+            alignment = {x=0,y=1},
+            offset = {x=0, y=-32}}
+            player:hud_add(input)
+          else storage:set_int(data, storage:get_int(data) + 1)
+          end
         else minetest.log("error", "Client Matcher: You need a server build with access to advanced player information see README.md for help!")
         end
       end
@@ -34,16 +48,45 @@ minetest.register_on_joinplayer(function(player)
   end)
 end)
 
+local function make_fork(info, enable)
+  if info.protocol_version and info.serialization_version and info.major
+  and info.minor and info.patch and info.version_string then
+    local data = info.protocol_version.."@"..info.serialization_version.."@"..
+    info.major.."@"..info.minor.."@"..info.patch.."@"..info.version_string
+    local count = storage:get_int(data)
+    if enable then
+      if count > 0 then
+        storage:set_int(data, 0-count)
+      end
+      return "These clients will now receive fork info!"
+    else
+      if count < 0 then
+        storage:set_int(data, 0-count)
+      end
+      return "These clients won't receive fork info anymore!"
+    end
+  else return "Please choose a client with complete client info!"
+  end
+end
+
 local function get_string_by_info(info)
   local str = ""
   local total = 0
   local array = storage:to_table().fields
   for _, numb in pairs(array) do
-    total = total + numb
+    numb = tonumber(numb)
+    if numb < 0 then
+      total = total - numb
+    else total = total + numb
+    end
   end
   if not info then
     str = str.."[join count/percentage] protocol_version, ser_vers, major, minor, patch, version_string"
     for index, count in pairs(array) do
+      count = tonumber(count)
+      if count < 0 then
+        count = 0 - count
+      end
       local data = string.split(index, "@")
       str = str.."\n["..count.."/"..100*(count/total).."%] "..table.concat(data, " ||| ")
     end
@@ -52,6 +95,9 @@ local function get_string_by_info(info)
     local data = info.protocol_version.."@"..info.serialization_version.."@"..
     info.major.."@"..info.minor.."@"..info.patch.."@"..info.version_string
     local count = storage:get_int(data)
+    if count < 0 then
+      count = 0 - count
+    end
     local data_table = string.split(data, "@")
     str = str.."[join count/percentage] protocol_version, ser_vers, major, minor, patch, version_string"
     str = str.."\n["..count.."/"..100*(count/total).."%] "..table.concat(data_table, " ||| ")
@@ -61,8 +107,8 @@ local function get_string_by_info(info)
 end
 
 minetest.register_chatcommand("client_matcher", {
-  description = "Shows which kind of client join your server!",
-  params = "list/reset/get <name>",
+  description = "Shows which kind of client join your server + Fork Settings!",
+  params = "list/reset/get <name>/setfork <name>/delfork <name>",
   privs = {ban=true},
   func = function(name, params)
     local split = string.split(params, " ")
@@ -74,7 +120,13 @@ minetest.register_chatcommand("client_matcher", {
     elseif #split == 2 and split[1] == "get" and minetest.get_player_by_name(split[2]) then
       local info = minetest.get_player_information(split[2])
       minetest.chat_send_player(name, get_string_by_info(info))
-    else return false, "Invalid Params: list/reset/get <name>"
+    elseif #split == 2 and split[1] == "setfork" and minetest.get_player_by_name(split[2]) then
+      local info = minetest.get_player_information(split[2])
+      return true, make_fork(info, true)
+    elseif #split == 2 and split[1] == "delfork" and minetest.get_player_by_name(split[2]) then
+      local info = minetest.get_player_information(split[2])
+      return true, make_fork(info, false)
+    else return false, "Invalid Params: list/reset/get <name>/setfork <name>/delfork <name>"
     end
   end,
 })
