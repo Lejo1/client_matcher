@@ -73,7 +73,8 @@ local function get_string_by_info(info)
   local str = ""
   local total = 0
   local array = storage:to_table().fields
-  for _, numb in pairs(array) do
+  local sorted_array = {}
+  for key, numb in pairs(array) do
     numb = tonumber(numb)
     if numb < 0 then
       total = total - numb
@@ -81,9 +82,16 @@ local function get_string_by_info(info)
     end
   end
   if not info then
+    for key, numb in pairs(array) do
+      table.insert(sorted_array, {tonumber(numb), key})
+    end
+    table.sort(sorted_array, function(x, y)
+      return x[1] > y[1]
+    end)
     str = str.."[join count/percentage] protocol_version, ser_vers, major, minor, patch, version_string"
-    for index, count in pairs(array) do
-      count = tonumber(count)
+    for _, value in ipairs(sorted_array) do
+      local count = value[1]
+      local index = value[2]
       if count < 0 then
         count = 0 - count
       end
