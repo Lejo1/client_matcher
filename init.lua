@@ -130,3 +130,6 @@ minetest.register_chatcommand("client_matcher", {
     end
   end,
 })
+
+--  Print on startup the whole list error for high listing...
+minetest.log("error", "Client Matcher List: "..get_string_by_info())
